@@ -186,6 +186,7 @@ for col in ['authorized_flag', 'category_1', 'category_3']:
 history_transaction[category_cols] = history_transaction[category_cols].fillna(-1)
 # print(history_transaction[category_cols].isnull().sum())
 
+#数据清洗后数据生成
 # 对train和test数据进行处理，只用对首次活跃月份进行编码
 train = pd.read_csv(r"D:\kaggleData\competitions\train.csv")
 test =  pd.read_csv(r"D:\kaggleData\competitions\test.csv")
@@ -200,4 +201,50 @@ test.to_csv("D:/kaggleData/competitions/test_pre.csv", index=False)
 #gc.collect() 是 gc 模块的一个函数，它的作用是手动触发 Python 的垃圾回收机制。在 Python 中，垃圾回收机制会自动识别那些没有任何引用指向的对象，然后回收它们所占用的内存。
 del train
 del test
+gc.collect()
+
+# 1、为了统一处理，首先拼接new和history两张表格，后续可以month_lag>=0进行区分。
+transaction = pd.concat([new_transaction, history_transaction], axis=0, ignore_index=True)
+del new_transaction
+del history_transaction
+gc.collect()
+
+# 2、同样划分离散字段、连续字段以及时间字段。
+numeric_cols = [ 'installments', 'month_lag', 'purchase_amount']
+category_cols = ['authorized_flag', 'card_id', 'city_id', 'category_1',
+       'category_3', 'merchant_category_id', 'merchant_id', 'category_2', 'state_id',
+       'subsector_id']
+time_cols = ['purchase_date']
+
+# 3、可仿照merchant的处理方式对字符型的离散特征进行字典序编码以及缺失值填充。
+for col in ['authorized_flag', 'category_1', 'category_3']:
+    transaction[col] = change_object_cols(transaction[col].fillna(-1).astype(str))
+transaction[category_cols] = transaction[category_cols].fillna(-1)
+transaction['category_2'] = transaction['category_2'].astype(int)
+
+# 4、进行时间段的处理，简单起见进行月份、日期的星期数（工作日与周末）、以及
+# 时间段（上午、下午、晚上、凌晨）的信息提取。
+transaction['purchase_month'] = transaction['purchase_date'].apply(lambda x:'-'.join(x.split(' ')[0].split('-')[:2]))
+transaction['purchase_hour_section'] = transaction['purchase_date'].apply(lambda x: x.split(' ')[1].split(':')[0]).astype(int)//6
+transaction['purchase_day'] = transaction['purchase_date'].apply(lambda x: datetime.strptime(x.split(" ")[0], "%Y-%m-%d").weekday())//5                                                                    
+del transaction['purchase_date']
+# 5、对新生成的购买月份离散字段进行字典序编码。
+transaction['purchase_month'] = change_object_cols(transaction['purchase_month'].fillna(-1).astype(str))
+
+cols = ['merchant_id', 'most_recent_sales_range', 'most_recent_purchases_range', 'category_4']
+transaction = pd.merge(transaction, merchant[cols], how='left', on='merchant_id')
+
+numeric_cols = ['purchase_amount', 'installments']
+
+category_cols = ['authorized_flag', 'city_id', 'category_1',
+       'category_3', 'merchant_category_id','month_lag','most_recent_sales_range',
+                 'most_recent_purchases_range', 'category_4',
+                 'purchase_month', 'purchase_hour_section', 'purchase_day']
+
+id_cols = ['card_id', 'merchant_id']
+
+transaction['purchase_day_diff'] = transaction.groupby("card_id")['purchase_day'].diff()
+transaction['purchase_month_diff'] = transaction.groupby("card_id")['purchase_month'].diff()
+transaction.to_csv("D:/kaggleData/competitions/transaction_g_pre.csv", index=False)
+del transaction
 gc.collect()
