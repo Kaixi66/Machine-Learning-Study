@@ -4,6 +4,8 @@ import pandas as pd
 import gc
 import seaborn as sns
 import matplotlib.pyplot as plt
+from datetime import datetime
+import time
 dictionPath = r"D:\kaggleData\competitions\Data_Dictionary.xlsx"
 table = pd.read_excel(dictionPath, header=2, sheet_name='train')
 #print(table)
@@ -76,10 +78,11 @@ numeric_cols = ['numerical_1', 'numerical_2',
 # 检验特征是否划分完全
 assert len(category_cols) + len(numeric_cols) == merchant.shape[1] # 维度为1代表列数，也就是每个series的标签
 #assert 语句用于调试，它会对一个条件进行检查，如果条件为 False，则会抛出一个 AssertionError 异常，从而终止程序的执行。该语句的目的是确保某个条件为真，以保证程序后续的操作能够正常进行。
-
+'''''
 print(merchant[category_cols].dtypes) # 查看category类型数据的数据类型
 print(merchant[category_cols].isnull().sum()) #可以看到category_2缺失值较多，需要进行填补
 print(merchant['category_2'].unique()) # 发现这个series中有缺失值nan
+'''''
 merchant['category_2'] = merchant['category_2'].fillna(-1) # 把缺失值转化为-1
 
 #字母编码函数 把数据中的字母转换为数字
@@ -99,8 +102,10 @@ for col in ['category_1', 'most_recent_sales_range', 'most_recent_purchases_rang
 
 
 # 查看连续变量整体情况
+'''
 print(merchant[numeric_cols].isnull().sum()) # 此处发现有3个类型缺失值为13
 print(merchant[numeric_cols].describe()) #部分连续变量还存在无穷值inf，需要对其进行简单处理。
+'''
 #此处我们首先需要对无穷值进行处理。此处我们采用类似天花板盖帽法的方式对其进行修改，即将inf改为最大的显式数值。
 inf_cols = ['avg_purchases_lag3', 'avg_purchases_lag6', 'avg_purchases_lag12']
 merchant[inf_cols] = merchant[inf_cols].replace(np.inf, merchant[inf_cols].replace(np.inf, -99).max().max())
@@ -110,5 +115,89 @@ merchant[inf_cols] = merchant[inf_cols].replace(np.inf, merchant[inf_cols].repla
 #不同于无穷值的处理，缺失值处理方法有很多。但该数据集缺失数据较少，33万条数据中只有13条连续特征缺失值，此处我们先简单采用均值进行填补处理，后续若有需要再进行优化处理。
 for col in numeric_cols:
     merchant[col] = merchant[col].fillna(merchant[col].mean())
+
+# 6、去除与transaction交易记录表格重复的列，以及merchant_id的重复记录。
+duplicate_cols = ['merchant_id', 'merchant_category_id', 'subsector_id', 'category_1', 'city_id', 'state_id', 'category_2']
+merchant = merchant.drop(duplicate_cols[1:], axis=1)
+merchant = merchant.loc[merchant['merchant_id'].drop_duplicates().index.tolist()].reset_index(drop=True)
+'''
 print("-------------------------------")
 print(merchant[numeric_cols].describe())
+'''
+
+# transaction数据处理
+history_transaction = pd.read_csv(r"D:\kaggleData\competitions\historical_transactions.csv", header=0)
+label = pd.read_excel(r"D:\kaggleData\competitions\Data_Dictionary.xlsx", header=2, sheet_name='history') # 查询字典找到分类名字解释
+new_transaction = pd.read_csv(r"D:\kaggleData\competitions\new_merchant_transactions.csv", header=0)
+
+#因为之后merchant和transaction文件要合并，所以先查重
+duplicate_cols = [] 
+for col in merchant.columns:
+    if col in new_transaction.columns:
+        duplicate_cols.append(col)
+        
+# 取出和商户数据表重复字段并去重
+# print(new_transaction[duplicate_cols].drop_duplicates().shape)
+# print(new_transaction['merchant_id'].nunique())
+
+numeric_cols = ['installments', 'month_lag', 'purchase_amount']
+category_cols = ['authorized_flag', 'card_id', 'city_id', 'category_1',
+       'category_3', 'merchant_category_id', 'merchant_id', 'category_2', 'state_id',
+       'subsector_id']
+time_cols = ['purchase_date']
+
+assert len(numeric_cols) + len(category_cols) + len(time_cols) == new_transaction.shape[1]
+
+#print(new_transaction[category_cols].isnull().sum()) #查看缺失值情况
+#我们对其object类型对象进行字典编码（id除外），并对利用-1对缺失值进行填补：
+for col in ['authorized_flag', 'category_1', 'category_3']:
+    new_transaction[col] = change_object_cols(new_transaction[col].fillna(-1).astype(str))
+
+# 再处理不是object类型的缺失值
+new_transaction[category_cols] = new_transaction[category_cols].fillna(-1)
+
+
+
+
+#因为之后merchant和transaction文件要合并，所以先查重
+duplicate_cols = [] 
+for col in merchant.columns:
+    if col in history_transaction.columns:
+        duplicate_cols.append(col)
+        
+# 取出和商户数据表重复字段并去重
+#print(history_transaction[duplicate_cols].drop_duplicates().shape)
+#print(history_transaction['merchant_id'].nunique())
+
+numeric_cols = ['installments', 'month_lag', 'purchase_amount']
+category_cols = ['authorized_flag', 'card_id', 'city_id', 'category_1',
+       'category_3', 'merchant_category_id', 'merchant_id', 'category_2', 'state_id',
+       'subsector_id']
+time_cols = ['purchase_date']
+
+assert len(numeric_cols) + len(category_cols) + len(time_cols) == history_transaction.shape[1]
+
+# print(history_transaction[category_cols].isnull().sum()) #查看缺失值情况
+#我们对其object类型对象进行字典编码（id除外），并对利用-1对缺失值进行填补：
+for col in ['authorized_flag', 'category_1', 'category_3']:
+    history_transaction[col] = change_object_cols(history_transaction[col].fillna(-1).astype(str))
+
+# 再处理不是object类型的缺失值
+history_transaction[category_cols] = history_transaction[category_cols].fillna(-1)
+# print(history_transaction[category_cols].isnull().sum())
+
+# 对train和test数据进行处理，只用对首次活跃月份进行编码
+train = pd.read_csv(r"D:\kaggleData\competitions\train.csv")
+test =  pd.read_csv(r"D:\kaggleData\competitions\test.csv")
+se_map= change_object_cols(train['first_active_month'].append(test['first_active_month']).astype(str))
+train['first_active_month'] = se_map[:train.shape[0]]
+test['first_active_month'] = se_map[train.shape[0]:]
+'''
+train.to_csv("D:/kaggleData/competitions/train_pre.csv", index=False)
+test.to_csv("D:/kaggleData/competitions/test_pre.csv", index=False)
+'''
+#del train 这行代码会把变量 train 对其所指向对象的引用删除。也就是说，现在 train 这个名字不再和那个对象关联。不过要注意，这并不意味着对象本身马上就会从内存中被删除，Python 的垃圾回收机制会在合适的时候处理它。
+#gc.collect() 是 gc 模块的一个函数，它的作用是手动触发 Python 的垃圾回收机制。在 Python 中，垃圾回收机制会自动识别那些没有任何引用指向的对象，然后回收它们所占用的内存。
+del train
+del test
+gc.collect()
