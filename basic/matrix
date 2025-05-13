@@ -13,4 +13,4 @@ diagnose = np.diag(D)
 print(diagnose) # 对角矩阵
 
 print(np.triu(A),'\n', np.tril(A)) # 取上三角,下三角
-print("hello")
+print("hello words")
