@@ -32,3 +32,4 @@ def logit_cla(yhat, thr=0.5):
 x = np.array([2, 0.5]).reshape(-1, 1)
 yhat = sigmoid(1-x)    
 # rint(logit_cla(yhat))
+
