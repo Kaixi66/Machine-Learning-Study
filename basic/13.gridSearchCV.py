@@ -83,7 +83,7 @@ clf = LogisticRegression(max_iter=int(1e6), solver='saga')
 
 # step2.创建参数空间
 # 此处我们挑选penalty和C这两个参数来进行参数空间的构造。参数空间首先可以是一个字典：
-para_grid_simple = {'penalty':['l1', 'l2'], 'C':[1, 0.5, 0.1, 0.05, 0.01]}
+param_grid_simple = {'penalty':['l1', 'l2'], 'C':[1, 0.5, 0.1, 0.05, 0.01]}
 
 # 当超参数之间存在依赖关系（如 penalty='elasticnet' 时才需要 l1_ratio），可通过以下方式处理
 param_grid_ra = [
@@ -95,7 +95,7 @@ param_grid_ra = [
 # Step3.实例化网格搜索评估器
 # 网格搜索的评估器的使用也是先实例化然后进行对其进行训练。
 # 此处先实例化一个简单的网格搜索评估器，需要输入此前设置的评估器和参数空间。
-search = GridSearchCV(estimator=clf, param_grid=para_grid_simple)
+search = GridSearchCV(estimator=clf, param_grid=param_grid_simple)
 
 # step4.训练网格搜索评估器
 search.fit(X_train, y_train)
