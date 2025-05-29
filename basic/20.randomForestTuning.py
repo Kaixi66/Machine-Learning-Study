@@ -14,10 +14,10 @@ from sklearn.model_selection import cross_validate, KFold, GridSearchCV
 # 现在模型正处于过拟合的状态，需要抗过拟合，且整体数据量不是非常多，随机抽样的比例不宜减小，
 # 因此我们挑选以下五个参数进行搜索：n_estimators，max_depth，max_features，min_impurity_decrease，criterion。
 data = pd.read_csv('/Users/kaixi/Downloads/datasets/House Price/train_encode.csv')
-def RMSE(cvresult, key):
-    return (abs(cvresult[key])**0.5).mean()
 X = data.iloc[:, :-1] # 住宅信息
 y = data.iloc[:, -1] # salePrice
+def RMSE(cvresult, key):
+    return (abs(cvresult[key])**0.5).mean()
 
 # step1. 建立benchmark
 reg = RFR(random_state=1412)

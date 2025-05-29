@@ -3,7 +3,7 @@ import pandas as pd
 import sklearn
 import matplotlib as mlp
 import seaborn as sns
-import re, pip, conda
+import re, pip
 
 # 这类方法会训练多个弱评估器（base estimators）
 # 并将它们输出的结果以某种方式结合起来解决一个问题。
