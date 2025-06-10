@@ -250,7 +250,7 @@ test_data.save_binary('test.bin')
 # Step 5.删除原始数据对象，清理内存
 del(data)
 del(X_train, y_train, X_test, y_test)
-gc.collect()
+#gc.collect()
 
 #然后即可进行模型训练
 params = {}

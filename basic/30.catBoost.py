@@ -262,14 +262,14 @@ best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=50, trials=tr
 print(best)
 
 # 使用最佳模参数进行模型训练
-best_model = CatBoostRegressor{
+best_model = CatBoostRegressor(
     iterations = int(best['iterations']),
     depth = int(best['depth']),
     learning_rate=best['learning_rate'],
     l2_leaf_reg=best['l2_leaf_reg'],
     border_count=int(best['border_count']),
     vebose=0
-}
+)
 
 best_model.fit(X_train, y_train)
 y_pred = best_model.predict(X_test)
