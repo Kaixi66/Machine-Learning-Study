@@ -1,1 +1,1 @@
-Here is the place I store my code for reviewing machine learning.
+Here is the place I show the code and example for kaggle competition 
